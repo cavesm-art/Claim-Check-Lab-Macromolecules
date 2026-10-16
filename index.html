@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim Check Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1B1340; --violet:#6C4DFF; --violet-d:#4B31D6; --pink:#FF5C93; --sun:#FFD23F;
+  --mint:#2ED9A3; --sky:#4CC9FF; --paper:#F6F3FF; --white:#fff; --grey:#6B6785;
+  --display:'Bricolage Grotesque','Trebuchet MS',system-ui,sans-serif;
+  --body:'Atkinson Hyperlegible','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--body);font-size:18px;line-height:1.5;color:var(--ink);
+  background:linear-gradient(160deg,#6C4DFF 0%,#4B31D6 100%);background-attachment:fixed;min-height:100vh}
+h1,h2,h3,h4{font-family:var(--display);line-height:1.1;margin:0 0 .4em}
+p{margin:0 0 .7em}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 6px var(--sun)}
+#bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#bg svg{position:absolute;opacity:.13;animation:drift linear infinite}
+@keyframes drift{from{transform:translateY(0) rotate(0)}to{transform:translateY(-120vh) rotate(180deg)}}
+
+/* HUD */
+.hud{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;
+  padding:10px 18px;background:var(--white);border-bottom:4px solid var(--ink)}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:22px;white-space:nowrap}
+.track{flex:1 1 320px;display:flex;gap:8px;min-width:240px}
+.seg{flex:1;font-size:12px;line-height:1.2;color:var(--grey)}
+.seg .bar{height:12px;border:3px solid var(--ink);border-radius:8px;background:var(--paper);overflow:hidden;margin-bottom:3px}
+.seg .bar i{display:block;height:100%;background:var(--mint);transition:width .6s}
+.pills{display:flex;gap:8px}
+.pill{border:3px solid var(--ink);border-radius:999px;padding:2px 12px;background:var(--sun);font-weight:700;white-space:nowrap}
+.pill.fire{background:var(--pink)}
+.pill.bump{animation:bump .5s}
+@keyframes bump{40%{transform:scale(1.25) rotate(-4deg)}}
+
+/* generic */
+.stage{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:26px 18px 90px}
+.card{background:var(--white);border:3px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink);padding:20px 22px}
+.btn{display:inline-block;border:3px solid var(--ink);border-radius:14px;background:var(--sun);padding:8px 18px;font-weight:700;
+  box-shadow:4px 4px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
+.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:2px 2px 0 var(--ink)}
+.btn.big{font-size:22px;padding:12px 26px;background:var(--mint)}
+.btn.sm{padding:3px 12px;font-size:15px;box-shadow:3px 3px 0 var(--ink)}
+.btn.ghost{background:var(--white)}
+.btn.pink{background:var(--pink)}
+.row{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;align-items:center}
+.small{font-size:15px;color:var(--grey)}
+.msg{color:#C2185B;font-weight:700;min-height:1.4em}
+.chip{display:inline-block;border:3px solid var(--ink);border-radius:999px;padding:0 12px;font-weight:700;font-size:15px}
+.v-sup{background:var(--mint)} .v-not{background:var(--pink)} .v-nei{background:var(--sun)}
+
+/* welcome */
+.welcome{display:grid;grid-template-columns:1.05fr 1fr;gap:34px;align-items:center;min-height:70vh}
+.welcome h1{font-size:clamp(44px,7vw,78px);font-weight:800;letter-spacing:-.02em}
+.lead{font-size:21px}
+.howto{padding-left:1.3em;margin:0 0 16px}
+.howto li{margin-bottom:6px}
+.fields{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px}
+.fields label{display:flex;flex-direction:column;font-weight:700;font-size:15px}
+.fields input,.fields select{font:inherit;border:3px solid var(--ink);border-radius:12px;padding:7px 12px;background:var(--paper);min-width:150px}
+.hero{position:relative;height:420px}
+.hero-post{position:absolute;left:50%;top:50%;width:min(100%,420px);margin:-130px 0 0 -210px;background:var(--white);
+  border:3px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink);padding:20px;
+  animation:postCycle 18s infinite both}
+.hero-post:nth-child(2){animation-delay:6s}.hero-post:nth-child(3){animation-delay:12s}
+.hero-post .claim{font-size:24px}
+@keyframes postCycle{0%{opacity:0;transform:translateY(24px) rotate(-2deg)}2.5%{opacity:1;transform:none}31%{opacity:1;transform:none}33.3%,100%{opacity:0;transform:translateY(-16px)}}
+.hero-post .stamp{animation:stampCycle 18s infinite both}
+.hero-post:nth-child(2) .stamp{animation-delay:6s}.hero-post:nth-child(3) .stamp{animation-delay:12s}
+@keyframes stampCycle{0%,9%{opacity:0;transform:translate(-50%,-50%) scale(3.2) rotate(-24deg)}
+  12%{opacity:1;transform:translate(-50%,-50%) scale(.9) rotate(-10deg)}
+  14%{transform:translate(-50%,-50%) scale(1.04) rotate(-12deg)}
+  16%,31%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-12deg)}
+  33.3%,100%{opacity:0;transform:translate(-50%,-50%) scale(1) rotate(-12deg)}}
+
+/* posts + stamps */
+.avatar{width:46px;height:46px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;flex:none}
+.post-head{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.post-head b{display:block;line-height:1.1}.post-head span{font-size:14px;color:var(--grey)}
+.post{position:relative}
+.post .claim{font-family:var(--display);font-weight:700;font-size:26px;line-height:1.2;margin-bottom:10px}
+.post .ctx{background:var(--paper);border-left:6px solid var(--violet);border-radius:0 12px 12px 0;padding:8px 12px;font-size:16px;margin:0}
+.post .ctx ul{margin:6px 0 0;padding-left:1.1em}
+.post-foot{display:flex;gap:16px;margin-top:12px;font-size:15px;color:var(--grey)}
+.post.thud{animation:thud .45s}
+@keyframes thud{20%{transform:translate(4px,6px) rotate(.6deg)}45%{transform:translate(-4px,-3px)}70%{transform:translate(2px,1px)}}
+.stamp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-12deg);z-index:3;pointer-events:none;
+  border:6px double var(--ink);border-radius:14px;padding:6px 18px;font-family:var(--display);font-weight:800;font-size:30px;
+  text-transform:uppercase;text-align:center;line-height:1.05;white-space:nowrap;box-shadow:0 0 0 4px rgba(255,255,255,.7)}
+.stamp.big{animation:slam .7s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes slam{0%{opacity:0;transform:translate(-50%,-50%) scale(3.2) rotate(-26deg)}
+  55%{opacity:1;transform:translate(-50%,-50%) scale(.9) rotate(-10deg)}
+  75%{transform:translate(-50%,-50%) scale(1.05) rotate(-12deg)}
+  100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-12deg)}}
+
+/* coach mascot */
+.coach{display:flex;gap:12px;align-items:flex-end;margin:0 0 16px}
+.mascot{width:68px;flex:none}
+.m-bob{animation:bob 2.4s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-5px) rotate(2deg)}}
+.bubble{position:relative;background:var(--sun);border:3px solid var(--ink);border-radius:18px 18px 18px 4px;padding:10px 14px;font-size:17px;box-shadow:4px 4px 0 var(--ink)}
+.bubble p:last-child{margin:0}
+
+/* round layout */
+.round{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
+.round .left{position:sticky;top:96px}
+.stepper{display:flex;gap:8px;list-style:none;padding:0;margin:0 0 14px;flex-wrap:wrap}
+.stepper li{display:flex;align-items:center;gap:6px;font-weight:700;font-size:15px;background:var(--paper);border:3px solid var(--ink);border-radius:999px;padding:1px 12px 1px 3px;opacity:.55}
+.stepper li span{width:24px;height:24px;border-radius:50%;background:var(--white);border:2px solid var(--ink);display:grid;place-items:center;font-size:13px}
+.stepper li.now{opacity:1;background:var(--sun)}
+.stepper li.done{opacity:1;background:var(--mint)}
+.step h3{font-size:28px}
+.stamps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.stampbtn{border:3px solid var(--ink);border-radius:16px;padding:12px 10px;text-align:center;box-shadow:4px 4px 0 var(--ink);display:flex;flex-direction:column;gap:4px;align-items:center;transition:transform .1s}
+.stampbtn b{font-family:var(--display);font-size:20px;line-height:1.1}
+.stampbtn small{font-size:14px;line-height:1.3}
+.stampbtn .sicon{width:38px;height:38px;border-radius:50%;border:3px solid var(--ink);background:var(--white);display:grid;place-items:center;font-weight:800;font-size:20px}
+.stampbtn:hover{transform:translateY(-3px) rotate(-1deg)}
+.stampbtn.on{transform:translate(3px,3px) rotate(-2deg);box-shadow:1px 1px 0 var(--ink);outline:4px solid var(--ink);outline-offset:3px}
+.evgrid{display:grid;gap:10px;margin-top:10px}
+.ev{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;background:var(--white);border:3px solid var(--ink);border-radius:14px;padding:10px 12px;box-shadow:3px 3px 0 var(--ink);transition:transform .1s,background .15s}
+.ev .ltr{width:30px;height:30px;border-radius:8px;border:3px solid var(--ink);display:grid;place-items:center;font-weight:800;background:var(--paper);flex:none;font-family:var(--display)}
+.ev:hover:not(.dim){transform:translateX(4px)}
+.ev.on{background:#E3DCFF;transform:translate(3px,3px);box-shadow:none}
+.ev.on .ltr{background:var(--violet);color:#fff}
+.ev.dim{opacity:.35;text-decoration:line-through;cursor:not-allowed}
+.ev.result{cursor:default}
+.tag{display:inline-block;font-size:13px;font-weight:700;border:2px solid var(--ink);border-radius:999px;padding:0 8px;margin-right:6px}
+.t2{background:var(--mint)}.t1{background:var(--sun)}.t0{background:#E5E2F2}
+.picked{background:var(--violet);color:#fff;border-color:var(--ink)}
+.opts{display:grid;gap:10px;margin-top:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;background:var(--white);border:3px solid var(--ink);border-radius:14px;padding:10px 14px;box-shadow:3px 3px 0 var(--ink);transition:transform .1s}
+.opt:hover:not(.dim):not(:disabled){transform:translateX(4px)}
+.opt .dot{width:22px;height:22px;border-radius:50%;border:3px solid var(--ink);flex:none;margin-top:2px;background:var(--white)}
+.opt.on{background:#E3DCFF}.opt.on .dot{background:var(--violet)}
+.opt.dim{opacity:.35;text-decoration:line-through;cursor:not-allowed}
+.opt.right{background:#C8F5E6}.opt.right .dot{background:var(--mint)}
+.opt.wrong{background:#FFD4E2;animation:shake .4s}.opt.wrong .dot{background:var(--pink)}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.fb{margin-top:12px;border-radius:14px;border:3px solid var(--ink);padding:10px 14px;font-size:17px}
+.fb.good{background:#C8F5E6}.fb.bad{background:#FFD4E2}
+.result h3{font-size:30px}
+.result h4{font-size:19px;margin:16px 0 6px}
+.rv{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:8px}
+.explain{background:var(--paper);border:3px solid var(--ink);border-radius:14px;padding:10px 14px}
+.ptable{width:100%;border-collapse:collapse;margin-top:6px;font-size:16px}
+.ptable td{padding:4px 6px;border-bottom:2px dashed #cfc9ea}.ptable td:last-child{text-align:right;font-weight:700}
+.ptable tr.tot td{border-bottom:none;border-top:3px solid var(--ink);font-family:var(--display);font-size:22px}
+.neg{color:#C2185B}
+
+/* tools */
+.tool{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+.tool h2{color:#fff;font-size:34px;grid-column:1/-1;margin:0}
+.tool-visual{min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;position:relative;overflow:hidden}
+.vialwrap{position:relative;width:170px}
+.vial{width:170px;display:block}
+.vial .bub{animation:rise 3s infinite ease-in}
+.vial .bub:nth-child(2){animation-delay:.8s}.vial .bub:nth-child(3){animation-delay:1.6s}.vial .bub:nth-child(4){animation-delay:2.2s}
+@keyframes rise{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(-80px);opacity:0}}
+.beam{position:absolute;left:-30px;right:-30px;top:10px;height:10px;border-radius:6px;background:var(--sky);box-shadow:0 0 18px 6px var(--sky);opacity:0}
+.scanning .beam{animation:scan 1.4s ease-in-out}
+@keyframes scan{0%{opacity:1;top:14px}50%{opacity:1;top:210px}100%{opacity:0;top:14px}}
+.readout{min-height:84px;display:flex;gap:14px;justify-content:center;align-items:flex-start;width:100%;border:3px dashed var(--ink);border-radius:16px;padding:10px;background:var(--paper)}
+.readout .wait{color:var(--grey);align-self:center}
+.atomwrap{text-align:center;font-size:13px;font-weight:700}
+.atom{width:50px;height:50px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:22px;color:#fff;animation:popin .5s cubic-bezier(.2,1.6,.4,1) both;margin:0 auto 2px}
+@keyframes popin{from{transform:scale(0) rotate(-90deg)}to{transform:none}}
+.a-C{background:#3B3B58}.a-H{background:#fff;color:var(--ink)}.a-O{background:#FF4D4D}.a-N{background:#4C7DFF}.a-P{background:#FF9F1C}
+.train{display:flex;gap:8px;width:100%;overflow-x:auto;padding:6px 4px 10px;animation:chug 1.6s ease-in-out infinite alternate}
+@keyframes chug{to{transform:translateX(5px)}}
+.car{flex:1;min-width:100px;border:3px solid var(--ink);border-radius:12px;background:var(--white);padding:6px 6px 14px;text-align:center;font-size:13px;font-weight:700;position:relative;transition:opacity .4s,background .4s}
+.car::after{content:"";position:absolute;bottom:-9px;left:14px;width:18px;height:18px;border-radius:50%;background:var(--ink);box-shadow:50px 0 0 var(--ink)}
+.car .d{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.car .d i{font-style:normal;width:20px;height:20px;border-radius:50%;border:2px solid var(--ink);font-size:11px;display:grid;place-items:center;color:#fff}
+.car .d i.a-H{color:var(--ink)}
+.car.match{background:#C8F5E6;animation:pulse .9s 3}
+.car.dim{opacity:.35}
+@keyframes pulse{50%{transform:scale(1.07)}}
+.lens{width:300px;height:300px;max-width:100%;border-radius:50%;border:8px solid var(--ink);background:radial-gradient(circle,#fff 0,#E3F7FF 100%);position:relative;overflow:hidden;box-shadow:inset 0 0 30px rgba(76,201,255,.5)}
+.lens svg{position:absolute;inset:0;width:100%;height:100%}
+.lens .drop0{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);background:#FFB020;border:4px solid var(--ink)}
+.lens.zoomed .drop0{display:none}
+.mol{opacity:0}.zoomed .mol{animation:zoomin 1s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes zoomin{from{opacity:0;transform:scale(.1)}to{opacity:1;transform:none}}
+.mol .tail{animation:wig 1.6s ease-in-out infinite alternate}
+.mol .tail:nth-of-type(2){animation-delay:.3s}.mol .tail:nth-of-type(3){animation-delay:.6s}
+@keyframes wig{from{transform:translateY(-3px)}to{transform:translateY(3px)}}
+.mol .lbl{opacity:0}.zoomed .mol .lbl{animation:fadein .6s 1.1s forwards}
+@keyframes fadein{to{opacity:1}}
+.t-ink{fill:var(--ink);font:700 15px var(--body)}
+.wsvg{width:100%;max-width:380px}
+.wave{animation:wave 3s linear infinite}
+@keyframes wave{to{transform:translateX(-160px)}}
+.drop{opacity:0}.dropping .drop{animation:fall 1s ease-in forwards}
+@keyframes fall{0%{opacity:1;transform:translateY(0)}85%{opacity:1;transform:translateY(74px)}100%{opacity:0;transform:translateY(80px)}}
+.bead{opacity:0;transform-origin:180px 114px}
+.beaded .bead{opacity:1;animation:beadpop .6s cubic-bezier(.2,1.6,.4,1),beadbob 2.4s 0.6s ease-in-out infinite alternate}
+@keyframes beadpop{from{transform:scale(0)}to{transform:none}}
+@keyframes beadbob{to{transform:translateY(-3px)}}
+.beaded.stirring .bead{opacity:0;animation:none}
+.mini{opacity:0;transition:transform 1s cubic-bezier(.4,0,.2,1),opacity .2s}
+.stirring .mini{opacity:1}
+.qcard{margin-top:16px}
+.fade-in{animation:fadein .5s both;opacity:0}
+
+/* membrane */
+.mem{display:grid;grid-template-columns:1.25fr 1fr;gap:28px;align-items:start}
+.mem h2{grid-column:1/-1;color:#fff;font-size:34px;margin:0}
+.mem-visual{padding:10px}
+#memsvg{width:100%;display:block;border-radius:14px;border:3px solid var(--ink);background:#BFE9FF}
+.mol2{transition:transform 1.7s cubic-bezier(.45,.05,.25,1)}
+.mol2.nt{transition:none}
+.bob{animation:bob2 2s ease-in-out infinite alternate}
+@keyframes bob2{to{transform:translateY(5px)}}
+
+/* notes drawer */
+#notesBtn{position:fixed;right:18px;bottom:18px;z-index:30;font-size:19px;padding:10px 20px;background:var(--pink)}
+#notes{position:fixed;top:0;right:0;bottom:0;width:min(470px,100%);z-index:40;background:var(--white);border-left:4px solid var(--ink);
+  transform:translateX(105%);transition:transform .35s cubic-bezier(.3,.8,.3,1);display:flex;flex-direction:column}
+#notes.open{transform:none}
+#notes header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:4px solid var(--ink);background:var(--sun)}
+#notes header h2{margin:0;font-size:26px}
+.tabs{display:flex;gap:6px;padding:10px 12px;flex-wrap:wrap;border-bottom:3px solid var(--ink)}
+.tabs button{border:3px solid var(--ink);border-radius:999px;background:var(--paper);padding:0 14px;font-weight:700;font-size:15px}
+.tabs button.on{background:var(--violet);color:#fff}
+.ntab{padding:14px 16px;overflow:auto;flex:1}
+.ngrp{border:3px solid var(--ink);border-radius:14px;padding:10px 12px;margin-bottom:12px}
+.ngrp h3{font-size:21px;margin-bottom:4px}
+.ngrp dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:2px 8px;font-size:16px}
+.ngrp dt{font-weight:700}.ngrp dd{margin:0}
+.g-carb{background:#FFF1B8}.g-lip{background:#FFD4E2}.g-pro{background:#CFEFFF}.g-nuc{background:#D9F7E8}
+.term{margin-bottom:10px;font-size:17px}.term b{font-family:var(--display)}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(27,19,64,.6);z-index:60;display:grid;place-items:center;padding:18px}
+.modal[hidden]{display:none}
+
+/* case file */
+.casefile{max-width:860px;margin:0 auto}
+.cf-top{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.badge{width:120px;height:120px;flex:none}
+.badge .burst{transform-origin:60px 60px;animation:spin 14s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cf-top h2{font-size:42px;margin:0}
+.cf-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.cf-stats div{border:3px solid var(--ink);border-radius:14px;padding:8px 10px;text-align:center;background:var(--paper)}
+.cf-stats b{display:block;font-family:var(--display);font-size:28px;line-height:1.1}
+.cf-table{width:100%;border-collapse:collapse;font-size:16px}
+.cf-table th,.cf-table td{border:2px solid var(--ink);padding:5px 8px;text-align:left;vertical-align:top}
+.cf-table th{background:var(--sun)}
+.ok{color:#0B8F66;font-weight:700}.no{color:#C2185B;font-weight:700}
+#confetti{position:fixed;inset:0;z-index:50;pointer-events:none}
+
+
+.replay-banner{margin-bottom:20px;background:var(--sun)}
+.meter{position:relative;height:22px;border:3px solid var(--ink);border-radius:12px;background:var(--paper);margin:10px 0 4px}
+.meter i{display:block;height:100%;background:var(--mint);border-radius:8px 0 0 8px;transition:width .8s}
+.meter b{position:absolute;top:-8px;bottom:-8px;width:4px;background:var(--ink);border-radius:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chipbtn{border:3px solid var(--ink);border-radius:999px;background:var(--white);padding:2px 14px;font-weight:700;font-size:16px;box-shadow:3px 3px 0 var(--ink);transition:transform .08s}
+.chipbtn:hover{transform:translateY(-2px)}
+.chipbtn.on{background:var(--violet);color:#fff;transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.tlabel{display:block;font-weight:700;margin:4px 0}
+textarea{width:100%;font:inherit;border:3px solid var(--ink);border-radius:14px;padding:10px 12px;background:var(--paper);resize:vertical}
+.cf-ref{margin:0 0 10px;padding:8px 12px;border:2px solid var(--ink);border-radius:12px;break-inside:avoid}
+.cf-ref h4{margin:0 0 2px;font-size:18px}
+.cf-ref p{margin:0 0 4px}
+.cf-ref .pick{font-size:15px;color:var(--grey);font-weight:700}
+@media (max-width:860px){
+  .welcome,.round,.tool,.mem{grid-template-columns:1fr}
+  .round .left{position:static}
+  .stamps{grid-template-columns:1fr}
+  .hero{height:360px}
+  .hero-post{margin-left:-46%;width:92%}
+  body{font-size:17px}
+  .post .claim{font-size:22px}
+}
+@media print{
+  body{background:#fff}
+  #bg,.hud,#notesBtn,#notes,.no-print,#confetti{display:none!important}
+  .card{box-shadow:none}
+  .stage{padding:0;max-width:none}
+  .casefile{border:2px solid #1B1340;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .casefile *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .badge .burst{animation:none}
+  .cf-table tr{break-inside:avoid}
+  .cf-stats{break-inside:avoid}
+  @page{margin:12mm}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  #bg{display:none}
+  .hero-post{animation:none!important;opacity:0}
+  .hero-post:first-child{opacity:1}
+  .hero-post .stamp{animation:none!important;opacity:1;transform:translate(-50%,-50%) rotate(-12deg)}
+}
+</style>
+</head>
+<body>
+<div id="bg" aria-hidden="true"></div>
+
+<header class="hud">
+  <div class="logo">
+    <svg width="34" height="34" viewBox="0 0 80 100" aria-hidden="true"><path d="M28 8H52V14H48V34L68 82Q71 92 62 92H18Q9 92 12 82L32 34V14H28Z" fill="#fff" stroke="#1B1340" stroke-width="6" stroke-linejoin="round"/><path d="M24 62H56L66 84Q68 90 62 90H18Q12 90 14 84Z" fill="#2ED9A3"/></svg>
+    Claim Check Lab
+  </div>
+  <div class="track" id="track" aria-label="Progress"></div>
+  <div class="pills">
+    <span class="pill" id="scorePill" title="Points">⭐ <b id="score">0</b></span>
+    <span class="pill fire" id="streakPill" title="Streak of clean fact-checks">🔥 <b id="streak">0</b></span>
+  </div>
+  <button class="btn sm ghost" id="restartBtn">Restart</button>
+</header>
+
+<main id="stage" class="stage"></main>
+
+<button class="btn" id="notesBtn" aria-expanded="false" aria-controls="notes">📒 Notes</button>
+<aside id="notes" aria-label="Notes">
+  <header><h2>Notes</h2><button class="btn sm" id="notesClose">Close</button></header>
+  <div class="tabs" role="tablist">
+    <button class="on" data-tab="groups">Four groups</button>
+    <button data-tab="terms">Key words</button>
+    <button data-tab="stamps">Stamp guide</button>
+  </div>
+  <div class="ntab" id="ntab"></div>
+</aside>
+
+<div class="modal" id="modal" hidden>
+  <div class="card" style="max-width:420px">
+    <h3>Start over?</h3>
+    <p>This clears your points and your answers.</p>
+    <div class="row"><button class="btn pink" id="yesRestart">Yes, restart</button><button class="btn ghost" id="noRestart">No, keep going</button></div>
+  </div>
+</div>
+<canvas id="confetti"></canvas>
+
+<script>
+"use strict";
+/* ============ helpers ============ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const KEY='claimCheckLab_v1';
+const fresh=()=>({name:'',hour:'',step:0,score:0,streak:0,bestStreak:0,hints:0,results:[],finals:null,attempt:1,rp:null,masteredOn:null,reflect:{}});
+function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let S=load()||fresh();
+
+/* ============ content ============ */
+const VERD={
+  supported:{label:'Supported',cls:'v-sup',icon:'✔',desc:'The evidence backs up the claim.'},
+  not:{label:'Not supported',cls:'v-not',icon:'✖',desc:'The evidence shows the claim is wrong.'},
+  nei:{label:'Not enough evidence',cls:'v-nei',icon:'?',desc:'The clues can’t decide yet. We need more.'}
+};
+const CARS=[{n:'Carbs',e:['C','H','O']},{n:'Lipids',e:['C','H','O']},{n:'Proteins',e:['C','H','O','N']},{n:'Nucleic acids',e:['C','H','O','N','P']}];
+
+const ROUNDS={
+ train:{training:true,title:'Practice',handle:'@lab_newbie',verdict:'not',
+  claim:'Sample P is a carbohydrate. It has C, H, and O.',
+  ctx:'<b>Your lab report on Sample P:</b><ul><li>Scanner: C, H, and O</li><li>Block Viewer: one glycerol + three fatty acid tails</li><li>Water test: stays in a bead</li><li>Function log: stores energy</li></ul>',
+  evidence:[
+   {t:'Scanner: Sample P has C, H, and O.',q:1,why:'True. But carbs and lipids both have C, H, and O. This clue can’t tell them apart.'},
+   {t:'Block Viewer: one glycerol with three fatty acid tails.',q:2,why:'Strong. Carbs are built from sugar units. This is the shape of a fat.'},
+   {t:'Notes: carbs are chains of sugar units. Fats are glycerol plus fatty acids.',q:2,why:'Strong. This rule lets you compare the sample to a carb.'},
+   {t:'Water test: Sample P does not mix with water.',q:1,why:'Helpful. It fits fats. But one clue alone is not enough.'},
+   {t:'The sample was in a blue tube.',q:0,why:'This has nothing to do with biomolecules.'}],
+  reasons:[
+   {t:'The blocks are glycerol and fatty acids, not sugar units. So Sample P is a lipid, not a carb.',ok:1},
+   {t:'It has C, H, and O, so it must be a carb.'},
+   {t:'It stores energy, so only a carb can be it.'},
+   {t:'It stayed in a bead, so it has no building blocks.'}],
+  explain:'The C, H, and O clue fits two groups. The building blocks decide it. Sample P is a fat, which is a lipid.',
+  hints:{verdict:'Check the block clue. Does it match sugar units?'},
+  coach:{verdict:'Read the claim. Then check your lab report. Pick your first stamp.',evidence:'Pick the 2 clues that connect most to the claim. A true fact can still be a weak clue.',reason:'Pick the sentence that uses your best clue.'}},
+
+ r1:{title:'Sample D',handle:'@sample_d',verdict:'nei',
+  claim:'Sample D has C, H, and O. It must be a carbohydrate.',
+  ctx:'<b>Lab report:</b> Sample D has carbon, hydrogen, and oxygen. That is all we know.',
+  evidence:[
+   {t:'Carbs and many lipids both have C, H, and O.',q:2,why:'Strong. Two groups share the same elements.'},
+   {t:'The report gives no clue about the building blocks.',q:2,why:'Strong. Building blocks would help us decide.'},
+   {t:'Sample D has C, H, and O.',q:1,why:'True, and it fits carbs. But it fits lipids too.'},
+   {t:'Sugars are carbohydrates.',q:0,why:'True, but we don’t know if Sample D is a sugar.'},
+   {t:'Proteins have nitrogen.',q:0,why:'True, but it is not about Sample D.'}],
+  reasons:[
+   {t:'Carbs and lipids both have C, H, and O. The elements alone can’t decide.',ok:1},
+   {t:'Sample D has C, H, and O, so it is a carb.'},
+   {t:'Sample D has no nitrogen, so it is a protein.'},
+   {t:'Anything with oxygen is a lipid.'}],
+  next:[
+   {t:'Look at the building blocks. Are they sugar units, or glycerol and fatty acids?',ok:1},
+   {t:'Weigh the sample.'},
+   {t:'Check the color of the tube.'},
+   {t:'Count how many people posted the claim.'}],
+  explain:'Two groups share the same elements. You need a second clue, like the building blocks or the job.',
+  hints:{verdict:'Count the clues. Is one clue enough?'}},
+
+ r2:{title:'Starch and cellulose',handle:'@plant_pal',verdict:'supported',
+  claim:'Starch and cellulose are both carbs. But they do different jobs.',
+  ctx:'Starch is found in potatoes. Cellulose is found in celery.',
+  evidence:[
+   {t:'Starch stores energy in plants. Cellulose gives plant cell walls their structure.',q:2,why:'Strong. This shows two different jobs.'},
+   {t:'Both are long chains of sugar units.',q:2,why:'Strong. This shows both are carbs.'},
+   {t:'Both have C, H, and O.',q:1,why:'True. But it doesn’t show different jobs. Lipids have C, H, and O too.'},
+   {t:'Glycogen is stored in the liver.',q:0,why:'True, but glycogen is not in this claim.'},
+   {t:'Pasta is a food with carbs.',q:0,why:'True, but it says nothing about cellulose.'}],
+  reasons:[
+   {t:'Both are sugar chains, so both are carbs. One stores energy. One gives structure.',ok:1},
+   {t:'They are both carbs, so they must do the same job.'},
+   {t:'They do different jobs, so one must be a lipid.'},
+   {t:'Only starch is a carb because it stores energy.'}],
+  explain:'Same group does not mean same job. The sugar units are joined in different ways, so the jobs are different.',
+  hints:{verdict:'Does the claim have two parts? Check both.'}},
+
+ r3:{title:'Lion’s needs',handle:'@gym_lion',verdict:'not',
+  claim:'Lions only need carbs. Energy can do every job.',
+  ctx:'A lion needs: energy to run, stored energy and insulation, and muscle repair.',
+  evidence:[
+   {t:'Muscle is built from proteins. Proteins are chains of amino acids.',q:2,why:'Strong. Muscle needs building blocks, not just energy.'},
+   {t:'Fats store energy and help insulate the body.',q:2,why:'Strong. Carbs are not the group for insulation.'},
+   {t:'Carbs give quick energy.',q:1,why:'True. But it covers only one of the three needs.'},
+   {t:'Lions eat meat.',q:0,why:'True, but it doesn’t test the claim.'},
+   {t:'Lions are fast runners.',q:0,why:'True, but it doesn’t help.'}],
+  reasons:[
+   {t:'Carbs give energy. But muscle needs proteins and insulation needs lipids. Energy is not a building material.',ok:1},
+   {t:'Carbs can’t give energy.'},
+   {t:'Energy can build muscle all by itself.'},
+   {t:'Lions only need protein.'}],
+  explain:'Energy and building materials are different things. Cells need both.',
+  hints:{verdict:'List the three needs. Can carbs meet all three?'}},
+
+ r4:{title:'Nuts',handle:'@trailmix_tina',verdict:'not',
+  claim:'Nuts are pure protein. That’s why hikers pack them.',
+  ctx:'Nuts are in lots of trail mixes.',
+  evidence:[
+   {t:'Nuts also contain lipids (fats and oils).',q:2,why:'Strong. “Pure protein” can’t be true if lipids are there.'},
+   {t:'One food can have more than one biomolecule group.',q:2,why:'Strong. Foods are mixes.'},
+   {t:'Lipids store lots of energy. That helps on long hikes.',q:1,why:'Helpful for the “why,” but it doesn’t test “pure protein.”'},
+   {t:'Proteins are made of amino acids.',q:0,why:'True, but it doesn’t show what else is in nuts.'},
+   {t:'Nuts grow on trees.',q:0,why:'True, but it doesn’t help.'}],
+  reasons:[
+   {t:'Nuts have protein and lipids, so “pure protein” is wrong.',ok:1},
+   {t:'Anything with protein has no other biomolecules.'},
+   {t:'Nuts are pure lipid, with no protein.'},
+   {t:'Hikers only need energy, so protein doesn’t matter.'}],
+  explain:'Nuts have protein and lipids. The lipids give lots of energy. The protein helps build and repair. That is why hikers like them.',
+  hints:{verdict:'Look at the word “pure.” What would break it?'}},
+
+ r5:{title:'DNA',handle:'@dna_dave',verdict:'not',
+  claim:'DNA is a protein. It has nitrogen.',
+  ctx:'Proteins and nucleic acids both have nitrogen.',
+  evidence:[
+   {t:'DNA is built from nucleotides, not amino acids.',q:2,why:'Strong. Proteins are built from amino acids.'},
+   {t:'Nucleic acids also have phosphorus (P). Proteins usually don’t.',q:2,why:'Strong. P is a clue for nucleic acids.'},
+   {t:'DNA has nitrogen.',q:1,why:'True. But nucleic acids have nitrogen too. It can’t decide.'},
+   {t:'DNA is double stranded.',q:0,why:'True, but it doesn’t tell us the group.'},
+   {t:'RNA is single stranded.',q:0,why:'True, but it’s about RNA.'}],
+  reasons:[
+   {t:'Both have nitrogen. But DNA is made of nucleotides and has phosphorus. It is a nucleic acid.',ok:1},
+   {t:'Only proteins have nitrogen, so DNA must be a protein.'},
+   {t:'DNA has a sugar in its nucleotides, so it is a carb.'},
+   {t:'DNA has no nitrogen.'}],
+  explain:'One matching clue is not enough. The building blocks and the phosphorus show DNA is a nucleic acid.',
+  hints:{verdict:'Does nitrogen belong to only one group?'}},
+
+ r6:{title:'Sample M',handle:'@chain_gang',verdict:'nei',
+  claim:'Sample M is a protein. It is made of long chains.',
+  ctx:'<b>Lab report:</b> Sample M is made of long chains. No other facts.',
+  evidence:[
+   {t:'Carbs, proteins, and nucleic acids can all be long chains.',q:2,why:'Strong. Chains don’t point to one group.'},
+   {t:'The report doesn’t say what the units are.',q:2,why:'Strong. The units would tell us the group.'},
+   {t:'Amino acids join into chains.',q:1,why:'True. But we don’t know Sample M’s units.'},
+   {t:'Proteins do many jobs.',q:0,why:'True, but it doesn’t help here.'},
+   {t:'Polypeptides fold into shapes.',q:0,why:'True, but we don’t know if Sample M is one.'}],
+  reasons:[
+   {t:'Three groups can be chains. We need the units or the elements.',ok:1},
+   {t:'Long chains mean it is a protein.'},
+   {t:'Only proteins are chains.'},
+   {t:'Long chains mean it is a lipid.'}],
+  next:[
+   {t:'Check the building blocks (amino acids?) and look for nitrogen (N).',ok:1},
+   {t:'Measure how long one chain is.'},
+   {t:'Check if the sample floats.'},
+   {t:'Ask which food it came from, and trust the answer.'}],
+  explain:'Many groups can be chains. We need the units or the elements before we can stamp it.',
+  hints:{verdict:'Which groups can be chains? Is it just one?'}},
+
+ r7:{title:'Phospholipids',handle:'@membrane_mike',verdict:'supported',
+  claim:'A phospholipid has a head that likes water. It has tails that avoid water.',
+  ctx:'Think about cell membranes.',
+  evidence:[
+   {t:'The head has a phosphate group. It is hydrophilic.',q:2,why:'Strong. This supports the “head likes water” part.'},
+   {t:'The two fatty acid tails are hydrophobic.',q:2,why:'Strong. This supports the “tails avoid water” part.'},
+   {t:'Phospholipids have glycerol.',q:1,why:'True. But it says nothing about water.'},
+   {t:'Fats have three fatty acid tails.',q:0,why:'True, but that is a fat, not a phospholipid.'},
+   {t:'Cells have membranes.',q:0,why:'True, but it doesn’t test the claim.'}],
+  reasons:[
+   {t:'The phosphate head is hydrophilic. The fatty acid tails are hydrophobic. The claim matches.',ok:1},
+   {t:'Both parts are hydrophobic.'},
+   {t:'Both parts like water.'},
+   {t:'The tails have phosphate, so they like water.'}],
+  explain:'A phospholipid has two parts. The head likes water. The tails avoid it. That is why it can build a membrane.',
+  hints:{verdict:'Does the claim have two parts? Is each part true?'}},
+
+ boss:{title:'Membrane boss',handle:'@cell_designer',verdict:'not',
+  claim:'A fat (triglyceride) would make a great cell membrane. Water is on both sides.',
+  ctx:'You just tested Molecule X (a fat) and Molecule Y (a phospholipid) in the Membrane Lab.',
+  evidence:[
+   {t:'Lab test: the fats clumped into a blob. They did not make two layers.',q:2,why:'Strong. You saw it happen.'},
+   {t:'Lab test: phospholipids made two layers. Heads faced the water. Tails hid inside.',q:2,why:'Strong. That is how a membrane works.'},
+   {t:'Fats and phospholipids are both lipids.',q:1,why:'True. But the same group doesn’t mean the same job.'},
+   {t:'Fats store energy.',q:0,why:'True, but a membrane is a different job.'},
+   {t:'Fats have glycerol.',q:0,why:'True. So do phospholipids. It can’t decide.'}],
+  reasons:[
+   {t:'A fat has no water-loving head, so it can’t face water on both sides. A phospholipid can.',ok:1},
+   {t:'A fat has a hydrophilic head, so it works best.'},
+   {t:'Phospholipids clump into a blob, so they are bad.'},
+   {t:'Membranes never touch water, so any lipid works.'}],
+  explain:'A fat has only hydrophobic tails. A phospholipid has a hydrophilic head and hydrophobic tails. That lets it face water on both sides.',
+  hints:{verdict:'Which molecule has a part that likes water?'}}
+};
+const FEED=['r1','r2','r3','r4','r5','r6','r7'];
+const FLOW=[{t:'welcome'},{t:'tool',id:'scanner'},{t:'tool',id:'blocks'},{t:'tool',id:'water'},{t:'round',id:'train'}]
+  .concat(FEED.map(id=>({t:'round',id:id})))
+  .concat([{t:'membrane'},{t:'round',id:'boss'},{t:'final'},{t:'gate'},{t:'reflect'},{t:'case'}]);
+const IDX={};FLOW.forEach((s,i)=>{if(['final','gate','reflect','case'].includes(s.t))IDX[s.t]=i});
+const SEG=[['Training',1,4],['Fact-Check Feed',5,11],['Boss Level',12,13],['Check & Reflect',14,16],['Case File',17,18]];
+
+const FINAL_Q=[
+ {q:'The clues are not enough to decide. What should a good scientist do?',o:['Pick the most likely answer and move on.','Say “not enough evidence” and name a test to run.','Ask a friend what they think.','Change the claim to match the clues.'],c:1,why:'Say what you can’t tell yet, and name the test that would help.'},
+ {q:'Which element is in nucleic acids but NOT in proteins?',o:['Carbon (C)','Nitrogen (N)','Phosphorus (P)','Oxygen (O)'],c:2,why:'Nucleic acids have phosphorus (CHONP). Proteins are CHON.'},
+ {q:'True or false: Two molecules in the same group always do the same job.',o:['True','False'],c:1,why:'False. Starch and cellulose are both carbs, but their jobs differ.'}
+];
+function maxPoints(){let m=0;FEED.concat(['boss']).forEach(id=>{m+=ROUNDS[id].next?50:40});return m+FINAL_Q.length*5}
+const NEED_STAMPS=6,NEED_PCT=0.8;
+const needPts=()=>Math.ceil(NEED_PCT*maxPoints());
+const baseTotal=()=>S.results.reduce((a,r)=>a+r.base,0)+(S.finals?S.finals.pts:0);
+const stampsOk=()=>S.results.filter(r=>r.mine===r.official).length;
+const mastered=()=>baseTotal()>=needPts()&&stampsOk()>=NEED_STAMPS;
+const recalc=()=>{S.score=S.results.reduce((a,r)=>a+r.pts,0)+(S.finals?S.finals.pts:0)};
+function buildQueue(){
+  const list=S.results.map(r=>{const mx=ROUNDS[r.id].next?50:40;return {id:r.id,pct:r.base/mx,vOk:r.mine===r.official}});
+  let q=list.filter(x=>!x.vOk||x.pct<.9);
+  if(!q.length)q=list.slice().sort((a,b)=>a.pct-b.pct).slice(0,3);
+  q=q.sort((a,b)=>(a.vOk-b.vOk)||(a.pct-b.pct)).slice(0,5);
+  const ids=q.map(x=>x.id);
+  return S.results.map(r=>r.id).filter(id=>ids.includes(id));
+}
+
+/* ============ notes ============ */
+const NOTES={
+ groups:`
+ <div class="ngrp g-carb"><h3>Carbohydrates</h3><dl><dt>Elements</dt><dd>C, H, O</dd><dt>Blocks</dt><dd>Sugar units (monosaccharides)</dd><dt>Jobs</dt><dd>Energy, energy storage, structure</dd><dt>Examples</dt><dd>Glucose, sucrose, starch, cellulose</dd></dl></div>
+ <div class="ngrp g-lip"><h3>Lipids</h3><dl><dt>Elements</dt><dd>C, H, O</dd><dt>Parts</dt><dd>Glycerol + fatty acids. A fat has 1 glycerol and 3 tails. A phospholipid has a phosphate head and 2 tails.</dd><dt>Jobs</dt><dd>Energy storage, insulation, cell membranes</dd><dt>Water</dt><dd>Fatty acid tails avoid water. A phospholipid head likes water.</dd><dt>Note</dt><dd>Lipids are not true chains of repeating units.</dd></dl></div>
+ <div class="ngrp g-pro"><h3>Proteins</h3><dl><dt>Elements</dt><dd>C, H, O, N (some have S)</dd><dt>Blocks</dt><dd>Amino acids. They join into polypeptides that fold.</dd><dt>Jobs</dt><dd>Build and repair, enzymes, transport, muscle</dd><dt>Examples</dt><dd>Insulin, keratin, hemoglobin</dd></dl></div>
+ <div class="ngrp g-nuc"><h3>Nucleic acids</h3><dl><dt>Elements</dt><dd>C, H, O, N, P</dd><dt>Blocks</dt><dd>Nucleotides: a sugar, a phosphate, and a base</dd><dt>Jobs</dt><dd>DNA stores instructions. RNA helps make proteins.</dd></dl></div>
+ <p class="small">Clue train: CHO, CHO, CHON, CHONP!</p>`,
+ terms:`
+ <div class="term"><b>Monomer:</b> one small building block.</div>
+ <div class="term"><b>Polymer:</b> a chain of many monomers.</div>
+ <div class="term"><b>Hydrophilic:</b> “water-loving.” It mixes with water.</div>
+ <div class="term"><b>Hydrophobic:</b> “water-avoiding.” It doesn’t mix with water.</div>
+ <div class="term"><b>Insulation:</b> keeps heat from leaving the body.</div>
+ <div class="term"><b>Claim:</b> a statement we can check with evidence.</div>
+ <div class="term"><b>Evidence:</b> facts that back up or break a claim.</div>
+ <div class="term"><b>Reasoning:</b> explains how the evidence connects to the claim.</div>
+ <div class="term"><b>Strong clue:</b> a fact that connects straight to the claim.</div>`,
+ stamps:`
+ <div class="ngrp g-carb" style="background:#C8F5E6"><h3>✔ Supported</h3><p>The evidence backs up the claim. Every part of it holds up.</p></div>
+ <div class="ngrp" style="background:#FFD4E2"><h3>✖ Not supported</h3><p>The evidence shows part of the claim is wrong.</p></div>
+ <div class="ngrp" style="background:#FFF1B8"><h3>? Not enough evidence</h3><p>The clues fit more than one answer. Say what is missing. Name a test.</p></div>
+ <p><b>Tip:</b> A true fact is not always a strong clue. Ask: “Does this fact connect to the claim?”</p>`
+};
+
+/* ============ svg bits ============ */
+function beaker(html){
+  return `<div class="coach"><svg class="mascot" viewBox="0 0 80 100" aria-hidden="true"><g class="m-bob"><path d="M28 8H52V14H48V34L68 82Q71 92 62 92H18Q9 92 12 82L32 34V14H28Z" fill="#fff" stroke="#1B1340" stroke-width="4" stroke-linejoin="round"/><path d="M24 62H56L66 84Q68 90 62 90H18Q12 90 14 84Z" fill="#2ED9A3"/><circle cx="34" cy="68" r="3.6" fill="#1B1340"/><circle cx="46" cy="68" r="3.6" fill="#1B1340"/><path d="M35 76Q40 81 45 76" stroke="#1B1340" stroke-width="3" fill="none" stroke-linecap="round"/></g></svg><div class="bubble">${html}</div></div>`;
+}
+const FAT_G=`<g><rect x="-17" y="-9" width="6" height="18" rx="3" fill="#FFB86B" stroke="#1B1340" stroke-width="1.5"/>
+ <path d="M-10 -7 q4 -4 8 0 t8 0 t8 0 t8 0" fill="none" stroke="#E89B00" stroke-width="2.6" stroke-linecap="round"/>
+ <path d="M-10 0 q4 -4 8 0 t8 0 t8 0 t8 0" fill="none" stroke="#E89B00" stroke-width="2.6" stroke-linecap="round"/>
+ <path d="M-10 7 q4 -4 8 0 t8 0 t8 0 t8 0" fill="none" stroke="#E89B00" stroke-width="2.6" stroke-linecap="round"/></g>`;
+const PHO_G=`<g><path d="M-3.8 -9 q-3 5 0 10 t0 10 t0 10" fill="none" stroke="#E89B00" stroke-width="2.6" stroke-linecap="round"/>
+ <path d="M3.8 -9 q3 5 0 10 t0 10 t0 10" fill="none" stroke="#E89B00" stroke-width="2.6" stroke-linecap="round"/>
+ <circle cx="0" cy="-16" r="8.5" fill="#FF5C93" stroke="#1B1340" stroke-width="2"/></g>`;
+function wavePath(w,y,amp){let d=`M0 ${y}`;for(let x=0;x<w;x+=80){d+=` q20 ${-amp} 40 0 t40 0`}return d+` V${y+400} H0Z`}
+
+/* ============ background ============ */
+function buildBg(){
+  if(RM)return;
+  const bg=$('#bg');let h='';
+  for(let i=0;i<14;i++){
+    const s=40+Math.random()*90,x=Math.random()*100,d=26+Math.random()*30,delay=-Math.random()*d;
+    const kind=i%3;
+    const inner=kind===0?'<polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="none" stroke="#fff" stroke-width="6"/>'
+      :kind===1?'<circle cx="30" cy="50" r="18" fill="#fff"/><circle cx="68" cy="34" r="12" fill="#fff"/><circle cx="70" cy="72" r="10" fill="#fff"/><path d="M30 50L68 34M30 50L70 72" stroke="#fff" stroke-width="5"/>'
+      :'<path d="M10 70q15-40 30 0t30 0t20-30" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>';
+    h+=`<svg viewBox="0 0 100 100" width="${s}" height="${s}" style="left:${x}%;top:105vh;animation-duration:${d}s;animation-delay:${delay}s">${inner}</svg>`;
+  }
+  bg.innerHTML=h;
+}
+
+/* ============ HUD ============ */
+function hud(){
+  const st=FLOW[S.step]||FLOW[0];
+  $('#track').innerHTML=SEG.map(([n,a,b])=>{
+    const len=b-a+1;let f=st.t==='case'?1:Math.max(0,Math.min(1,(S.step-a)/len));
+    return `<div class="seg"><div class="bar"><i style="width:${f*100}%"></i></div>${n}</div>`;
+  }).join('');
+  $('#streak').textContent=S.streak;
+}
+let shownScore=0;
+function setScore(n){
+  const el=$('#score');
+  if(RM){el.textContent=n;shownScore=n;return}
+  const from=shownScore,t0=performance.now();
+  const tick=t=>{const p=Math.min(1,(t-t0)/700);shownScore=Math.round(from+(n-from)*p);el.textContent=shownScore;if(p<1)requestAnimationFrame(tick)};
+  requestAnimationFrame(tick);
+  const pill=$('#scorePill');pill.classList.remove('bump');void pill.offsetWidth;pill.classList.add('bump');
+}
+
+/* ============ render ============ */
+let RT=null,TS={},MS={};
+function render(){
+  hud();
+  const st=S.rp?{t:'round',id:S.rp.q[S.rp.i]}:FLOW[S.step];
+  const stage=$('#stage');
+  let html='';
+  if(st.t==='welcome')html=viewWelcome();
+  else if(st.t==='tool'){TS={acted:false,solved:false,phase:0};html=viewTool(st.id)}
+  else if(st.t==='round'){if(!RT||RT.id!==st.id||RT.phase==='result')startRound(st.id);html=viewRound()}
+  else if(st.t==='membrane'){MS={tried:{x:false,y:false},solved:false};html=viewMembrane()}
+  else if(st.t==='final')html=viewFinal();
+  else if(st.t==='gate')html=viewGate();
+  else if(st.t==='reflect')html=viewReflect();
+  else if(st.t==='case')html=viewCase();
+  stage.innerHTML=html;
+  window.scrollTo(0,0);
+  if(st.t==='membrane')initMembrane();
+  if(st.t==='case'||(st.t==='gate'&&mastered()))celebrate();
+  setScore(S.score);
+}
+
+function viewWelcome(){
+  const hero=[
+   {c:'Carbs give a lion all the energy it needs!',v:'not'},
+   {c:'Phospholipid tails avoid water.',v:'supported'},
+   {c:'Sample D has C, H, and O. It’s a carb.',v:'nei'}];
+  const heroHtml=hero.map((h,i)=>`<article class="hero-post" aria-hidden="${i?'true':'false'}">
+    <div class="post-head"><div class="avatar" style="background:${['#FF5C93','#4CC9FF','#FFD23F'][i]}">${'LPS'[i]}</div><div><b>${['@gym_lion','@membrane_mike','@sample_d'][i]}</b><span>BioBuzz • just now</span></div></div>
+    <p class="claim">“${esc(h.c)}”</p>
+    <div class="post-foot"><span>♥ ${[212,87,145][i]}</span><span>↻ ${[64,12,33][i]}</span></div>
+    <div class="stamp ${VERD[h.v].cls}">${VERD[h.v].label}</div></article>`).join('');
+  return `<section class="welcome">
+   <div class="card">
+    <h1>Claim Check Lab</h1>
+    <p class="lead">People post claims about molecules. Some hold up. Some don’t. Your job is to check the evidence.</p>
+    <ol class="howto">
+      <li><b>Train</b> with four lab tools.</li>
+      <li><b>Fact-check</b> posts. Pick a stamp, pick clues, explain why.</li>
+      <li><b>Beat the boss</b> by building a cell membrane.</li>
+    </ol>
+    <div class="fields">
+      <label>Your name<input id="fName" type="text" maxlength="40" autocomplete="off" value="${esc(S.name)}"></label>
+      <label>Hour<select id="fHour"><option value="">Pick</option>${[1,2,3,4,5,6,7].map(h=>`<option ${String(S.hour)===String(h)?'selected':''}>${h}</option>`).join('')}</select></label>
+    </div>
+    <p id="formMsg" class="msg" role="alert"></p>
+    <button class="btn big" data-act="start">Start training</button>
+    <p class="small" style="margin-top:12px">Stuck? Tap <b>Notes</b> any time. It’s free. Hints cost 3 points. You need 80% to finish, and you can try again.</p>
+   </div>
+   <div class="hero" aria-label="Example posts">${heroHtml}</div>
+  </section>`;
+}
+
+/* ============ tools ============ */
+const TOOLS={
+ scanner:{title:'Tool 1: Element Scanner',
+  say:'Sample P is in the vial. Press <b>Scan</b> to see which elements it has.',
+  act:'Scan Sample P',
+  q:{text:'Sample P has only C, H, and O. Which groups have ONLY those three elements?',
+    o:['Only carbohydrates','Carbohydrates and lipids','Proteins and nucleic acids','All four groups'],c:1,
+    right:'Yes! Carbs and lipids both have just C, H, and O. Elements alone can’t tell them apart.',
+    wrong:['Look at the train. Lipids are CHO too.',null,'Those two have N. Sample P has no N.','Proteins and nucleic acids have N. Sample P does not.']},
+  visual:()=>`<div class="vialwrap" id="vialwrap"><svg class="vial" viewBox="0 0 160 260" aria-label="A vial of Sample P">
+    <defs><clipPath id="vc"><rect x="48" y="20" width="64" height="206" rx="28"/></clipPath></defs>
+    <g clip-path="url(#vc)"><rect x="40" y="96" width="80" height="140" fill="#FFB86B"/>
+    <circle class="bub" cx="70" cy="200" r="5" fill="#fff" opacity=".8"/><circle class="bub" cx="90" cy="215" r="4" fill="#fff"/><circle class="bub" cx="80" cy="190" r="6" fill="#fff"/><circle class="bub" cx="96" cy="205" r="3.5" fill="#fff"/></g>
+    <rect x="48" y="20" width="64" height="206" rx="28" fill="none" stroke="#1B1340" stroke-width="6"/>
+    <rect x="42" y="10" width="76" height="18" rx="9" fill="#FF5C93" stroke="#1B1340" stroke-width="5"/>
+    <text x="80" y="170" text-anchor="middle" font-family="Bricolage Grotesque,sans-serif" font-weight="800" font-size="40" fill="#1B1340">P</text></svg><div class="beam" id="beam"></div></div>
+    <div class="readout" id="readout"><span class="wait">Waiting for scan…</span></div>
+    <div class="small" style="align-self:flex-start;font-weight:700">Clue Train</div>
+    <div class="train" id="train">${CARS.map(c=>`<div class="car"><span>${c.n}</span><div class="d">${c.e.map(e=>`<i class="a-${e}">${e}</i>`).join('')}</div></div>`).join('')}</div>`},
+ blocks:{title:'Tool 2: Block Viewer',
+  say:'Press <b>Zoom in</b>. The viewer shows the building blocks of Sample P.',
+  act:'Zoom in',
+  q:{text:'What building blocks do you see in Sample P?',
+    o:['A chain of sugar units','One glycerol and three fatty acid tails','A chain of amino acids','A chain of nucleotides'],c:1,
+    right:'Yes! That is the shape of a fat (triglyceride). A fat is a lipid.',
+    wrong:['Sugar chains look like beads on a string. This has tails.',null,'Amino acids make a chain. This is not a chain.','Nucleotides make a chain. This is not a chain.']},
+  visual:()=>`<div class="lens" id="lens"><div class="drop0"></div>
+   <svg class="molsvg" viewBox="0 0 360 260" aria-label="Glycerol with three fatty acid tails"><g class="mol">
+    <path d="M60 70V190" stroke="#1B1340" stroke-width="6"/>
+    ${[70,130,190].map(y=>`<circle cx="60" cy="${y}" r="16" fill="#FFB86B" stroke="#1B1340" stroke-width="4"/>`).join('')}
+    ${[70,130,190].map(y=>`<path class="tail" d="M78 ${y} q14 -14 28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0" fill="none" stroke="#E89B00" stroke-width="8" stroke-linecap="round"/>`).join('')}
+    <text class="lbl t-ink" x="60" y="232" text-anchor="middle">glycerol</text>
+    <text class="lbl t-ink" x="200" y="232" text-anchor="middle">3 fatty acid tails</text></g></svg></div>`},
+ water:{title:'Tool 3: Water Drop Test',
+  say:'Press <b>Add Sample P</b>. Then <b>stir</b> the water. Watch what happens.',
+  act:'Add Sample P',
+  q:{text:'Sample P stayed in a bead. What word means “water-avoiding”?',
+    o:['Hydrophilic','Hydrophobic','Monomer','Polymer'],c:1,
+    right:'Yes! Hydrophobic means water-avoiding. Fats and fatty acid tails avoid water.',
+    wrong:['Hydrophilic means water-loving. Sample P did not mix.',null,'A monomer is one building block. It isn’t about water.','A polymer is a chain. It isn’t about water.']},
+  visual:()=>`<svg class="wsvg" id="wtr" viewBox="0 0 360 300" aria-label="A beaker of water">
+    <defs><clipPath id="bc"><rect x="94" y="108" width="172" height="160" rx="16"/></clipPath></defs>
+    <rect x="94" y="108" width="172" height="160" rx="16" fill="#8BDCFF"/>
+    <g clip-path="url(#bc)"><path class="wave" d="${wavePath(520,108,9)}" fill="#6CCBF5" transform="translate(0,0)"/>
+     <g id="minis">${[0,1,2,3,4,5].map(i=>`<circle class="mini" r="${6+(i%3)*2}" cx="0" cy="0" fill="#FFB020" stroke="#1B1340" stroke-width="2.5" style="transform:translate(180px,116px)"/>`).join('')}</g></g>
+    <path d="M90 40V250Q90 272 112 272H248Q270 272 270 250V40" fill="none" stroke="#1B1340" stroke-width="6" stroke-linecap="round"/>
+    <circle class="drop" cx="180" cy="26" r="10" fill="#FFB020" stroke="#1B1340" stroke-width="3"/>
+    <ellipse class="bead" cx="180" cy="114" rx="24" ry="11" fill="#FFB020" stroke="#1B1340" stroke-width="3"/>
+    <text class="t-ink" x="180" y="296" text-anchor="middle" id="wnote"></text></svg>`}
+};
+
+function viewTool(id){
+  const T=TOOLS[id];
+  const q=T.q;
+  return `<section class="tool">
+   <h2>${T.title}</h2>
+   <div class="card tool-visual">${T.visual()}</div>
+   <div>
+    ${beaker(T.say)}
+    <div class="row" style="margin:0 0 6px"><button class="btn" id="actBtn" data-act="toolAct" data-tool="${id}">${T.act}</button></div>
+    <div class="card qcard" id="qcard" hidden>
+     <h3>${esc(q.text)}</h3>
+     <div class="opts">${q.o.map((o,i)=>`<button class="opt" data-act="toolAns" data-i="${i}"><span class="dot"></span><span>${esc(o)}</span></button>`).join('')}</div>
+     <div id="qfb"></div>
+    </div>
+   </div></section>`;
+}
+function showQ(){const c=$('#qcard');c.hidden=false;c.classList.add('fade-in');setTimeout(()=>c.scrollIntoView({behavior:RM?'auto':'smooth',block:'nearest'}),100)}
+function toolAct(id){
+  const btn=$('#actBtn');
+  if(id==='scanner'){
+    btn.disabled=true;$('#vialwrap').classList.add('scanning');
+    setTimeout(()=>{
+      $('#readout').innerHTML=['C','H','O'].map((e,i)=>`<div class="atomwrap"><div class="atom a-${e}" style="animation-delay:${i*.25}s">${e}</div>${{C:'Carbon',H:'Hydrogen',O:'Oxygen'}[e]}</div>`).join('');
+      document.querySelectorAll('.car').forEach((c,i)=>c.classList.add(i<2?'match':'dim'));
+    },1400);
+    setTimeout(showQ,2300);
+  }else if(id==='blocks'){
+    btn.disabled=true;$('#lens').classList.add('zoomed');
+    setTimeout(showQ,2200);
+  }else if(id==='water'){
+    const w=$('#wtr');
+    if(TS.phase===0){
+      btn.disabled=true;w.classList.add('dropping');TS.phase=1;
+      setTimeout(()=>{w.classList.add('beaded');btn.textContent='Stir the water';btn.disabled=false;$('#wnote').textContent='It floats in a bead.'},1050);
+    }else if(TS.phase===1){
+      btn.disabled=true;TS.phase=2;w.classList.add('stirring');
+      const minis=[...w.querySelectorAll('.mini')];
+      minis.forEach(m=>{m.style.transform=`translate(${110+Math.random()*140}px,${130+Math.random()*120}px)`});
+      setTimeout(()=>minis.forEach((m,i)=>{m.style.transform=`translate(${170+(i%3)*10}px,${114+(i%2)*4}px)`}),1500);
+      setTimeout(()=>{w.classList.remove('stirring');$('#wnote').textContent='It came back together. It won’t mix!';showQ()},2700);
+    }
+  }
+}
+function toolAns(i){
+  const id=FLOW[S.step].id,q=TOOLS[id].q;
+  const opts=[...document.querySelectorAll('#qcard .opt')],fb=$('#qfb');
+  if(TS.solved)return;
+  if(i===q.c){
+    TS.solved=true;opts.forEach((o,k)=>{o.disabled=true;if(k===i)o.classList.add('right')});
+    fb.innerHTML=`<div class="fb good"><b>Nice.</b> ${esc(q.right)}</div><div class="row"><button class="btn big" data-act="toolNext">Next</button></div>`;
+  }else{
+    opts[i].classList.add('wrong');opts[i].disabled=true;
+    fb.innerHTML=`<div class="fb bad">Not quite. ${esc(q.wrong[i]||'Try again.')}</div>`;
+  }
+}
+
+/* ============ rounds ============ */
+function startRound(id){
+  const R=ROUNDS[id];
+  RT={id,R,phase:'verdict',verdict:null,ev:[],reason:null,next:null,say:'',hinted:{},dim:{},hints:0,
+    order:{ev:shuffle(R.evidence.map((e,i)=>i)),reason:shuffle(R.reasons.map((r,i)=>i)),next:R.next?shuffle(R.next.map((r,i)=>i)):null}};
+}
+const avatarColors=['#FF5C93','#4CC9FF','#FFD23F','#2ED9A3','#B9A6FF'];
+function postHtml(){
+  const R=RT.R;let h=0;for(const c of R.handle)h+=c.charCodeAt(0);
+  return `<article class="post card" id="post">
+   <div class="post-head"><div class="avatar" style="background:${avatarColors[h%5]}">${esc(R.handle.charAt(1).toUpperCase())}</div><div><b>${esc(R.handle)}</b><span>BioBuzz • just now</span></div></div>
+   <p class="claim">“${esc(R.claim)}”</p>
+   <div class="ctx">${R.ctx}</div>
+   <div class="post-foot"><span>♥ ${20+(h*7)%240}</span><span>↻ ${5+(h*3)%70}</span></div>
+   <div id="stampslot"></div></article>`;
+}
+function viewRound(){
+  const banner=S.rp?`<div class="card replay-banner"><b>Attempt ${S.attempt}:</b> practice post ${S.rp.i+1} of ${S.rp.q.length}. Your best score on each post counts.</div>`:'';
+  return `${banner}<section class="round"><div class="left">${postHtml()}</div><div id="panel">${panelHtml()}</div></section>`;
+}
+function renderPanel(){$('#panel').innerHTML=panelHtml()}
+function stepper(){
+  const R=RT.R,steps=['Stamp','Clues','Reason'].concat(R.next?['Next test']:[]);
+  const idx={verdict:0,evidence:1,reason:2,next:3,result:99}[RT.phase];
+  return `<ol class="stepper">${steps.map((s,i)=>`<li class="${i<idx?'done':i===idx?'now':''}"><span>${i+1}</span>${s}</li>`).join('')}</ol>`;
+}
+function hintBtn(){
+  const R=RT.R,used=RT.hinted[RT.phase];
+  const label=R.training?'Hint (free)':'Hint (−3 points)';
+  return `<button class="btn ghost" data-act="hint" ${used?'disabled':''}>${used?'Hint used':label}</button>`;
+}
+function coachHtml(){
+  const R=RT.R;
+  if(R.training&&R.coach[RT.phase]&&!RT.say)return beaker(esc(R.coach[RT.phase]));
+  if(RT.say)return beaker(RT.say);
+  return '';
+}
+function panelHtml(){
+  const R=RT.R,ph=RT.phase;
+  if(ph==='result')return resultHtml();
+  let body='';
+  if(ph==='verdict'){
+    body=`<h3>Pick your first stamp</h3><p>Read the claim. What is your first guess?</p>
+    <div class="stamps">${['supported','not','nei'].map(v=>`<button class="stampbtn ${VERD[v].cls} ${RT.verdict===v?'on':''}" data-act="pickVerdict" data-v="${v}" aria-pressed="${RT.verdict===v}"><span class="sicon">${VERD[v].icon}</span><b>${VERD[v].label}</b><small>${VERD[v].desc}</small></button>`).join('')}</div>
+    <div class="row"><button class="btn big" data-act="lockVerdict" ${RT.verdict?'':'disabled'}>Lock in stamp</button>${hintBtn()}</div>`;
+  }else if(ph==='evidence'){
+    body=`<h3>Pick the 2 best clues</h3><p>A strong clue connects straight to the claim. A true fact can still be a weak clue.</p>
+    <div class="evgrid">${RT.order.ev.map((ei,pos)=>{const e=R.evidence[ei],on=RT.ev.includes(ei),dim=RT.dim[ei];
+      return `<button class="ev ${on?'on':''} ${dim?'dim':''}" data-act="toggleEv" data-i="${ei}" ${dim?'disabled':''} aria-pressed="${on}"><span class="ltr">${'ABCDE'[pos]}</span><span>${esc(e.t)}</span></button>`}).join('')}</div>
+    <div class="row"><button class="btn big" data-act="lockEv" ${RT.ev.length===2?'':'disabled'}>Lock in clues (${RT.ev.length}/2)</button>${hintBtn()}</div>`;
+  }else if(ph==='reason'||ph==='next'){
+    const isR=ph==='reason',list=isR?R.reasons:R.next,ord=isR?RT.order.reason:RT.order.next,sel=isR?RT.reason:RT.next;
+    body=`<h3>${isR?'Explain your reasoning':'What test would help most?'}</h3>
+    <p>${isR?`You stamped it <span class="chip ${VERD[RT.verdict].cls}">${VERD[RT.verdict].label}</span>. Pick the sentence that fits best.`:'The clues were not enough. Pick the next step that would help the most.'}</p>
+    <div class="opts">${ord.map(i=>`<button class="opt ${sel===i?'on':''} ${RT.dim[(isR?'r':'n')+i]?'dim':''}" data-act="${isR?'pickReason':'pickNext'}" data-i="${i}" ${RT.dim[(isR?'r':'n')+i]?'disabled':''}><span class="dot"></span><span>${esc(list[i].t)}</span></button>`).join('')}</div>
+    <div class="row"><button class="btn big" data-act="${isR?'lockReason':'lockNext'}" ${sel===null?'disabled':''}>${isR?'Lock in reason':'Lock in test'}</button>${hintBtn()}</div>`;
+  }
+  return `${stepper()}${coachHtml()}<div class="card step">${body}</div>`;
+}
+function doHint(){
+  const R=RT.R,ph=RT.phase;
+  if(RT.hinted[ph])return;
+  RT.hinted[ph]=true;
+  if(!R.training){RT.hints++}
+  if(ph==='verdict'){RT.say=esc(R.hints.verdict)}
+  else if(ph==='evidence'){
+    const c=R.evidence.map((e,i)=>i).filter(i=>R.evidence[i].q===0&&!RT.ev.includes(i));
+    if(c.length){RT.dim[c[0]]=true}
+    RT.say='I crossed out one clue that doesn’t help.';
+  }else if(ph==='reason'||ph==='next'){
+    const isR=ph==='reason',list=isR?R.reasons:R.next;
+    const c=list.map((e,i)=>i).filter(i=>!list[i].ok&&(isR?RT.reason:RT.next)!==i);
+    if(c.length){RT.dim[(isR?'r':'n')+c[0]]=true}
+    RT.say='I crossed out one answer that doesn’t fit.';
+  }
+  renderPanel();
+}
+function setPhase(p){RT.phase=p;RT.say='';renderPanel();const pn=$('#panel');if(pn&&window.innerWidth<860)pn.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})}
+
+function finishRound(){
+  const R=RT.R;
+  const vOk=RT.verdict===R.verdict;
+  const evPts=RT.ev.reduce((a,i)=>a+R.evidence[i].q*5,0);
+  const rOk=!!R.reasons[RT.reason].ok;
+  const nOk=R.next?!!R.next[RT.next].ok:null;
+  let streakBonus=0,delta=0,clean=false;
+  if(!R.training){
+    clean=vOk&&evPts===20;
+    if(clean){S.streak++;if(S.streak>S.bestStreak)S.bestStreak=S.streak;if(S.streak>=2)streakBonus=Math.min(15,5*(S.streak-1))}
+    else S.streak=0;
+    const base=Math.max(0,(vOk?10:0)+evPts+(rOk?10:0)+(nOk?10:0)-3*RT.hints);
+    delta=base+streakBonus;S.hints+=RT.hints;
+    const entry={id:RT.id,title:R.title,mine:RT.verdict,official:R.verdict,evPts,rOk,nOk,base,pts:delta,hints:RT.hints,attempt:S.attempt};
+    const k=S.results.findIndex(x=>x.id===RT.id);
+    if(k<0)S.results.push(entry);else if(base>=S.results[k].base)S.results[k]=entry;
+    recalc();
+  }
+  RT.res={vOk,evPts,rOk,nOk,streakBonus,delta,clean};
+  if(S.rp){S.rp.i++;if(S.rp.i>=S.rp.q.length){S.rp=null;S.step=(S.finals&&S.finals.pts<10)?IDX.final:IDX.gate}}
+  else S.step++;
+  save();
+  RT.phase='result';RT.say='';
+  renderPanel();hud();setScore(S.score);
+  if(clean){const p=$('#streakPill');p.classList.remove('bump');void p.offsetWidth;p.classList.add('bump')}
+  const slot=$('#stampslot');
+  slot.innerHTML=`<div class="stamp big ${VERD[R.verdict].cls}">${VERD[R.verdict].label}</div>`;
+  setTimeout(()=>{const po=$('#post');if(po)po.classList.add('thud')},RM?0:420);
+}
+function resultHtml(){
+  const R=RT.R,r=RT.res;
+  const rows=[];
+  if(!R.training){
+    rows.push(['Stamp',r.vOk?'+10':'0']);
+    rows.push(['Clues',`+${r.evPts} of 20`]);
+    rows.push(['Reason',r.rOk?'+10':'0']);
+    if(R.next)rows.push(['Next test',r.nOk?'+10':'0']);
+    if(RT.hints)rows.push(['Hints',`<span class="neg">−${RT.hints*3}</span>`]);
+    if(r.streakBonus)rows.push(['Streak bonus 🔥',`+${r.streakBonus}`]);
+  }
+  const nt=S.rp?'round':FLOW[S.step].t;const nextLabel=nt==='membrane'?'Go to Boss Level':nt==='round'&&R.training?'Start the Fact-Check Feed':nt==='final'?'Final check':nt==='gate'?'See my results':'Next post';
+  const tagTxt={2:'Strong clue',1:'Helps, not enough',0:'Doesn’t help'};
+  return `<div class="card result">
+   <h3>${R.training?'Practice result':'Fact-check result'}</h3>
+   <div class="rv"><span>Official stamp:</span><span class="chip ${VERD[R.verdict].cls}">${VERD[R.verdict].label}</span></div>
+   <div class="rv"><span>Your stamp:</span><span class="chip ${VERD[RT.verdict].cls}">${VERD[RT.verdict].label}</span><span class="${r.vOk?'ok':'no'}">${r.vOk?'✔ Match!':'✖ Not a match'}</span></div>
+   <p class="explain"><b>Why:</b> ${esc(R.explain)}</p>
+   <h4>Your clues</h4>
+   <div class="evgrid">${RT.order.ev.map((ei,pos)=>{const e=R.evidence[ei],on=RT.ev.includes(ei);
+     return `<div class="ev result ${on?'on':''}"><span class="ltr">${'ABCDE'[pos]}</span><span>${on?'<span class="tag picked">You picked</span>':''}<span class="tag t${e.q}">${tagTxt[e.q]}</span>${esc(e.t)}<br><small>${esc(e.why)}</small></span></div>`}).join('')}</div>
+   <h4>Your reasoning</h4>
+   <p><span class="${r.rOk?'ok':'no'}">${r.rOk?'✔':'✖'}</span> ${esc(R.reasons[RT.reason].t)}${r.rOk?'':`<br><small><b>Best answer:</b> ${esc(R.reasons.find(x=>x.ok).t)}</small>`}</p>
+   ${R.next?`<h4>Your next test</h4><p><span class="${r.nOk?'ok':'no'}">${r.nOk?'✔':'✖'}</span> ${esc(R.next[RT.next].t)}${r.nOk?'':`<br><small><b>Best answer:</b> ${esc(R.next.find(x=>x.ok).t)}</small>`}</p>`:''}
+   ${R.training?'':`<h4>Points</h4><table class="ptable">${rows.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}<tr class="tot"><td>This post</td><td>${r.delta}</td></tr></table>`}
+   <div class="row"><button class="btn big" data-act="nextStep">${nextLabel}</button></div>
+  </div>`;
+}
+
+/* ============ membrane lab ============ */
+function viewMembrane(){
+  return `<section class="mem">
+   <h2>Boss Level: Membrane Lab</h2>
+   <div class="card mem-visual"><svg id="memsvg" viewBox="0 0 640 340" aria-label="Water with molecules">
+     <path class="wave" d="${wavePath(900,20,8)}" fill="#9DDCFF"/>
+     <path class="wave" style="animation-duration:4.5s" d="${wavePath(900,326,6)}" fill="#8BD3F7" opacity=".0"/>
+     <text class="t-ink" x="14" y="38" style="opacity:.55">water</text><text class="t-ink" x="14" y="324" style="opacity:.55">water</text>
+     <g id="molg"></g></svg></div>
+   <div>
+    ${beaker('A cell needs a <b>membrane</b> with water on <b>both</b> sides. Test both molecules. Watch where they go.')}
+    <div class="row" style="margin:0 0 10px">
+      <button class="btn" data-act="memTest" data-m="x">Test Molecule X (glycerol + 3 tails)</button>
+      <button class="btn pink" data-act="memTest" data-m="y">Test Molecule Y (phosphate head + 2 tails)</button>
+    </div>
+    <div id="memfb"></div>
+    <div class="card qcard" id="qcard" hidden>
+     <h3>Which molecule made a membrane with water on both sides?</h3>
+     <div class="opts">${['Molecule X','Molecule Y','Both did'].map((o,i)=>`<button class="opt" data-act="memAns" data-i="${i}"><span class="dot"></span><span>${o}</span></button>`).join('')}</div>
+     <div id="qfb"></div>
+    </div></div></section>`;
+}
+function initMembrane(){}
+function memTest(m){
+  const g=$('#molg');g.innerHTML='';
+  const items=[];
+  const n=m==='x'?9:18;
+  for(let i=0;i<n;i++){
+    const el=document.createElementNS('http://www.w3.org/2000/svg','g');
+    el.setAttribute('class','mol2 nt');
+    el.innerHTML=m==='x'?FAT_G:PHO_G;
+    g.appendChild(el);items.push(el);
+    const x=40+Math.random()*560,y=(Math.random()<.5?30+Math.random()*80:230+Math.random()*80),r=Math.random()*360;
+    el.style.transform=`translate(${x}px,${y}px) rotate(${r}deg)`;
+  }
+  void g.getBoundingClientRect();
+  setTimeout(()=>{
+    items.forEach((el,i)=>{
+      el.classList.remove('nt');
+      let x,y,r;
+      if(m==='x'){const ang=i*2.4,rad=20*Math.sqrt(i+.5)*1.35;x=320+Math.cos(ang)*rad;y=170+Math.sin(ang)*rad*.8;r=(i*67)%360}
+      else{const top=i<9,k=i%9;x=50+k*68;y=top?150:192;r=top?0:180}
+      el.style.transform=`translate(${x}px,${y}px) rotate(${r}deg)`;
+    });
+    MS.tried[m]=true;
+    $('#memfb').innerHTML=m==='x'
+      ?'<div class="fb bad fade-in"><b>Molecule X:</b> the fats clumped into a blob. Nothing faces the water on both sides.</div>'
+      :'<div class="fb good fade-in"><b>Molecule Y:</b> two rows! The heads face the water. The tails hide inside.</div>';
+    if(MS.tried.x&&MS.tried.y)setTimeout(showQ,900);
+  },RM?50:900);
+}
+function memAns(i){
+  if(MS.solved)return;
+  const opts=[...document.querySelectorAll('#qcard .opt')],fb=$('#qfb');
+  if(i===1){
+    MS.solved=true;opts.forEach((o,k)=>{o.disabled=true;if(k===i)o.classList.add('right')});
+    fb.innerHTML=`<div class="fb good"><b>Yes!</b> Y has a water-loving head and water-avoiding tails. Now use what you saw to check a boss claim.</div><div class="row"><button class="btn big" data-act="toolNext">Face the boss claim</button></div>`;
+  }else{
+    opts[i].classList.add('wrong');opts[i].disabled=true;
+    fb.innerHTML=`<div class="fb bad">Not quite. Look at where the heads and tails went.</div>`;
+  }
+}
+
+/* ============ final check ============ */
+let FS={};
+function viewFinal(){
+  FS={a:[null,null,null],done:false};
+  return `<section style="max-width:760px;margin:0 auto"><h2 style="color:#fff;font-size:34px">Final check</h2>
+   <div id="finalqs">${FINAL_Q.map((f,qi)=>`<div class="card" style="margin-bottom:18px"><h3 style="font-size:22px">${qi+1}. ${esc(f.q)}</h3><div class="opts">${f.o.map((o,i)=>`<button class="opt" data-act="finalPick" data-q="${qi}" data-i="${i}"><span class="dot"></span><span>${esc(o)}</span></button>`).join('')}</div><div id="ffb${qi}"></div></div>`).join('')}</div>
+   <div class="row"><button class="btn big" id="finalBtn" data-act="finalCheck" disabled>Check my answers</button></div></section>`;
+}
+function finalPick(q,i){
+  if(FS.done)return;
+  FS.a[q]=i;
+  document.querySelectorAll(`[data-act="finalPick"][data-q="${q}"]`).forEach((b,k)=>b.classList.toggle('on',k===i));
+  $('#finalBtn').disabled=FS.a.includes(null);
+}
+function finalCheck(){
+  if(FS.done||FS.a.includes(null))return;
+  FS.done=true;let pts=0;
+  FINAL_Q.forEach((f,qi)=>{
+    const ok=FS.a[qi]===f.c;if(ok)pts+=5;
+    document.querySelectorAll(`[data-act="finalPick"][data-q="${qi}"]`).forEach((b,k)=>{b.disabled=true;b.classList.remove('on');if(k===f.c)b.classList.add('right');else if(k===FS.a[qi])b.classList.add('wrong')});
+    $('#ffb'+qi).innerHTML=`<div class="fb ${ok?'good':'bad'}">${ok?'<b>Correct.</b> ':'<b>Not quite.</b> '}${esc(f.why)}</div>`;
+  });
+  if(!S.finals||pts>=S.finals.pts)S.finals={a:FS.a.slice(),pts};recalc();S.step=IDX.gate;save();setScore(S.score);hud();
+  $('#finalBtn').outerHTML='<button class="btn big" data-act="nextStep">See my results</button>';
+}
+
+/* ============ case file ============ */
+function rankInfo(){
+  const p=S.score/maxPoints();
+  if(p>=.9)return {n:'Lead Fact-Checker',c:'#FF5C93'};
+  if(p>=.7)return {n:'Senior Fact-Checker',c:'#FFD23F'};
+  if(p>=.45)return {n:'Fact-Check Analyst',c:'#2ED9A3'};
+  return {n:'Fact-Check Intern',c:'#4CC9FF'};
+}
+function meterHtml(){
+  const mx=maxPoints(),have=baseTotal();
+  return `<div class="meter" aria-label="Points toward mastery"><i style="width:${Math.min(100,have/mx*100)}%"></i><b style="left:${NEED_PCT*100}%"></b></div><div class="small">${have} points now. You need ${needPts()}.</div>`;
+}
+function viewGate(){
+  const ok=mastered(),have=baseTotal(),sOk=stampsOk(),tot=FEED.length+1;
+  const stats=`<div class="cf-stats"><div><b class="${have>=needPts()?'ok':'no'}">${have}/${needPts()}</b>points needed</div><div><b class="${sOk>=NEED_STAMPS?'ok':'no'}">${sOk}/${NEED_STAMPS}</b>stamps right (of ${tot})</div><div><b>${S.attempt}</b>attempt</div></div>`;
+  if(ok){
+    return `<section class="card" style="max-width:760px;margin:0 auto"><h2 style="font-size:40px">Mastery reached!</h2>
+     ${stats}${meterHtml()}
+     <p style="margin-top:12px">You showed you can use evidence to check a claim. Next, a short reflection. Then you get your Case File.</p>
+     <div class="row"><button class="btn big" data-act="toReflect">Go to reflection</button></div></section>`;
+  }
+  const q=buildQueue();
+  const rows=q.map(id=>{const r=S.results.find(x=>x.id===id),R=ROUNDS[id];
+    return `<tr><td><b>${esc(r.title)}</b></td><td>${VERD[r.mine].label}</td><td>${VERD[r.official].label} <span class="${r.mine===r.official?'ok':'no'}">${r.mine===r.official?'✔':'✖'}</span></td><td>${r.evPts}/20</td><td>${esc(R.explain)}</td></tr>`}).join('');
+  const msg=have>=maxPoints()*.65?'You are close. A few posts need another look.':'Not yet. That’s okay. Fact-checking takes practice.';
+  return `<section style="max-width:900px;margin:0 auto"><div class="card"><h2 style="font-size:38px">Not yet</h2>
+    ${beaker(msg+' You will redo only the posts below. Your best score on each post counts.')}
+    ${stats}${meterHtml()}
+    <h3 style="margin-top:16px">Posts to practice (${q.length})</h3>
+    <div style="overflow-x:auto"><table class="cf-table"><thead><tr><th>Post</th><th>My stamp</th><th>Official stamp</th><th>Clues</th><th>What to remember</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="small" style="margin-top:10px">Tip: open <b>Notes</b> before each post. Notes are free. Strong clues connect straight to the claim.${S.attempt>=3?' Try the hints too. They cost 3 points, but they can help you learn.':''}</p>
+    <div class="row"><button class="btn big" data-act="retry">Try again (${q.length} post${q.length===1?'':'s'})</button></div></div></section>`;
+}
+
+const REF={
+ learnedPick:['Elements alone can’t always name a group','Building blocks help decide the group','Same group does not mean same job','Energy and building materials are different','“Not enough evidence” is a real answer'],
+ struggledPick:['Picking the stamp','Choosing strong clues','Explaining my reasoning','Remembering the biomolecule facts','Knowing when evidence is not enough'],
+ likedPick:['The stamp slam','The lab tools','The Membrane Lab','Points and streaks','The BioBuzz posts']
+};
+function chips(f,list){
+  const cur=S.reflect[f];
+  return `<div class="chips">${list.map(v=>`<button class="chipbtn ${cur===v?'on':''}" data-act="rPick" data-f="${f}" data-v="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join('')}</div>`;
+}
+function viewReflect(){
+  const R=S.reflect;
+  const ta=(f,starter,req)=>`<label class="tlabel" for="t_${f}">${starter}</label><textarea id="t_${f}" data-f="${f}" rows="4" maxlength="900">${esc(R[f]||'')}</textarea>`;
+  return `<section style="max-width:820px;margin:0 auto"><h2 style="color:#fff;font-size:36px">Reflection</h2>
+   <div class="card" style="margin-bottom:18px"><h3>1. What I learned</h3><p><b>Pick one:</b> Which idea do you understand best now?</p>${chips('learnedPick',REF.learnedPick)}
+     <p style="margin-top:12px"><b>Now write 2 sentences.</b></p>${ta('learned','Start with: “I learned that …”')}</div>
+   <div class="card" style="margin-bottom:18px"><h3>2. What I struggled with</h3><p><b>Pick one:</b> What was hardest for you?</p>${chips('struggledPick',REF.struggledPick)}
+     <p style="margin-top:12px"><b>Now write 2 sentences.</b></p>${ta('struggled','Start with: “I struggled with … because …”')}</div>
+   <div class="card" style="margin-bottom:18px"><h3>3. What I liked</h3><p><b>Pick one:</b> What did you like most?</p>${chips('likedPick',REF.likedPick)}
+     <p style="margin-top:12px"><b>Now write 2 sentences.</b></p>${ta('liked','Start with: “I liked … because …”')}</div>
+   <div class="card" style="margin-bottom:18px"><h3>4. Suggestions and comments</h3>
+     <p><b>How fun was it?</b> (1 = not fun, 5 = very fun)</p>${chips('fun',['1','2','3','4','5'])}
+     <p style="margin-top:10px"><b>How much did it help you learn?</b> (1 = not much, 5 = a lot)</p>${chips('help',['1','2','3','4','5'])}
+     <p style="margin-top:12px"><b>Optional:</b> Any suggestions or other comments?</p>${ta('sug','Start with: “I suggest …” (or type “None”)')}</div>
+   <p id="rMsg" class="msg" role="alert" style="color:#fff;background:#C2185B;border-radius:12px;padding:0 12px"></p>
+   <div class="row"><button class="btn big" data-act="rSubmit">Make my Case File</button></div></section>`;
+}
+function reflectMissing(){
+  const R=S.reflect,m=[];
+  if(!R.learnedPick)m.push('pick what you learned');
+  if((R.learned||'').trim().length<25)m.push('write more about what you learned');
+  if(!R.struggledPick)m.push('pick what was hardest');
+  if((R.struggled||'').trim().length<25)m.push('write more about what you struggled with');
+  if(!R.likedPick)m.push('pick what you liked most');
+  if((R.liked||'').trim().length<25)m.push('write more about what you liked');
+  if(!R.fun)m.push('rate how fun it was');
+  if(!R.help)m.push('rate how much it helped');
+  return m;
+}
+
+function viewCase(){
+  const rk=rankInfo(),d=new Date().toLocaleDateString(),R=S.reflect;
+  const rows=S.results.map(r=>`<tr><td>${esc(r.title)}</td><td>${VERD[r.mine].label}</td><td>${VERD[r.official].label} <span class="${r.mine===r.official?'ok':'no'}">${r.mine===r.official?'✔':'✖'}</span></td><td>${r.evPts}/20</td><td><span class="${r.rOk?'ok':'no'}">${r.rOk?'✔':'✖'}</span></td><td>${r.nOk===null?'–':`<span class="${r.nOk?'ok':'no'}">${r.nOk?'✔':'✖'}</span>`}</td><td>${r.pts}</td></tr>`).join('');
+  const pts=[];for(let i=0;i<24;i++){const a=i*Math.PI/12,r=i%2?44:58;pts.push((60+Math.cos(a)*r).toFixed(1)+','+(60+Math.sin(a)*r).toFixed(1))}
+  const para=t=>esc(t||'').replace(/\n/g,'<br>');
+  return `<section class="card casefile" id="casefile">
+   <div class="cf-top">
+    <svg class="badge" viewBox="0 0 120 120" aria-hidden="true"><polygon class="burst" points="${pts.join(' ')}" fill="${rk.c}" stroke="#1B1340" stroke-width="4" stroke-linejoin="round"/><text x="60" y="68" text-anchor="middle" font-family="Bricolage Grotesque,sans-serif" font-weight="800" font-size="30" fill="#1B1340">✔</text></svg>
+    <div><h2>Case File</h2><p style="margin:0"><b>${esc(S.name||'Student')}</b> • Hour ${esc(S.hour||'–')} • ${esc(d)}</p><p style="margin:0"><span class="chip" style="background:${rk.c}">${rk.n}</span> <span class="chip" style="background:#C8F5E6">Mastery reached on attempt ${S.masteredOn||S.attempt}</span></p></div>
+   </div>
+   <div class="cf-stats"><div><b>${S.score}</b>points</div><div><b>${S.bestStreak}</b>best streak</div><div><b>${S.hints}</b>hints used</div><div><b>${S.finals?S.finals.pts/5:0}/${FINAL_Q.length}</b>final check</div><div><b>${S.masteredOn||S.attempt}</b>attempt${(S.masteredOn||S.attempt)===1?'':'s'}</div></div>
+   <div style="overflow-x:auto"><table class="cf-table"><thead><tr><th>Post</th><th>My stamp</th><th>Official stamp</th><th>Clues</th><th>Reason</th><th>Test</th><th>Pts</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <p style="margin-top:14px"><b>Big idea:</b> A claim holds up only when the evidence connects to it. If the clues fit more than one answer, say <i>not enough evidence</i> and name the test you need.</p>
+   <h3 style="margin-top:18px">My reflection</h3>
+   <div class="cf-ref"><h4>What I learned</h4><p class="pick">Best-understood idea: ${esc(R.learnedPick||'')}</p><p>${para(R.learned)}</p></div>
+   <div class="cf-ref"><h4>What I struggled with</h4><p class="pick">Hardest part: ${esc(R.struggledPick||'')}</p><p>${para(R.struggled)}</p></div>
+   <div class="cf-ref"><h4>What I liked</h4><p class="pick">Favorite part: ${esc(R.likedPick||'')}</p><p>${para(R.liked)}</p></div>
+   <div class="cf-ref"><h4>Suggestions and comments</h4><p class="pick">Fun: ${esc(R.fun||'–')}/5 &nbsp;•&nbsp; Helped me learn: ${esc(R.help||'–')}/5</p><p>${para(R.sug)||'No comment.'}</p></div>
+   <div class="no-print" style="margin-top:18px">
+    <h4>How to turn it in</h4>
+    <ol class="howto"><li>Click <b>Print / save as PDF</b>.</li><li>Pick <b>Save as PDF</b> as the destination.</li><li>Save the file, then upload it to the Canvas assignment.</li></ol>
+    <p class="small">If the Print button does nothing, click on this page and press Ctrl+P (Cmd+P on a Mac).</p>
+    <div class="row"><button class="btn big" data-act="print">Print / save as PDF</button><button class="btn" data-act="copy">Copy as text</button><button class="btn ghost" data-act="editReflect">Edit my reflection</button><button class="btn ghost" data-act="again">Start over</button></div>
+    <p class="small" id="copyMsg"></p>
+   </div>
+  </section>`;
+}
+function caseText(){
+  const rk=rankInfo(),R=S.reflect;
+  let t=`CLAIM CHECK LAB — CASE FILE\nName: ${S.name}\nHour: ${S.hour}\nDate: ${new Date().toLocaleDateString()}\nRank: ${rk.n}\nMastery reached on attempt ${S.masteredOn||S.attempt}\nPoints: ${S.score}\nBest streak: ${S.bestStreak}   Hints used: ${S.hints}\nFinal check: ${S.finals?S.finals.pts/5:0}/${FINAL_Q.length}\n\n`;
+  S.results.forEach(r=>{t+=`${r.title}: my stamp = ${VERD[r.mine].label}; official = ${VERD[r.official].label}; clues ${r.evPts}/20; reason ${r.rOk?'right':'wrong'}${r.nOk===null?'':'; test '+(r.nOk?'right':'wrong')}; points ${r.pts}\n`});
+  t+=`\nREFLECTION\nWhat I learned (${R.learnedPick||''}): ${R.learned||''}\n\nWhat I struggled with (${R.struggledPick||''}): ${R.struggled||''}\n\nWhat I liked (${R.likedPick||''}): ${R.liked||''}\n\nFun: ${R.fun||'-'}/5. Helped me learn: ${R.help||'-'}/5\nSuggestions/comments: ${R.sug||'None'}\n`;
+  return t;
+}
+function celebrate(){
+  if(RM)return;
+  const cv=$('#confetti'),cx=cv.getContext('2d');
+  cv.width=innerWidth;cv.height=innerHeight;
+  const cols=['#FF5C93','#FFD23F','#2ED9A3','#4CC9FF','#fff'];
+  const ps=Array.from({length:150},()=>({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*.6,vx:(Math.random()-.5)*3,vy:2+Math.random()*4,s:6+Math.random()*8,r:Math.random()*6,c:cols[Math.floor(Math.random()*5)]}));
+  const t0=performance.now();
+  (function f(t){
+    cx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.r+=.1;cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillStyle=p.c;cx.fillRect(-p.s/2,-p.s/3,p.s,p.s*.6);cx.restore()});
+    if(t-t0<3800)requestAnimationFrame(f);else cx.clearRect(0,0,cv.width,cv.height);
+  })(t0);
+}
+
+/* ============ events ============ */
+$('#stage').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;
+  const a=b.dataset.act,d=b.dataset;
+  switch(a){
+    case 'start':{
+      const n=$('#fName').value.trim(),h=$('#fHour').value;
+      if(!n||!h){$('#formMsg').textContent=!n?'Type your name to start.':'Pick your hour to start.';return}
+      S.name=n;S.hour=h;S.step=1;save();render();break}
+    case 'toolAct':toolAct(d.tool);break;
+    case 'toolAns':toolAns(+d.i);break;
+    case 'toolNext':S.step++;save();render();break;
+    case 'pickVerdict':RT.verdict=d.v;renderPanel();break;
+    case 'lockVerdict':if(RT.verdict)setPhase('evidence');break;
+    case 'toggleEv':{const i=+d.i,k=RT.ev.indexOf(i);if(k>=0)RT.ev.splice(k,1);else if(RT.ev.length<2)RT.ev.push(i);renderPanel();break}
+    case 'lockEv':if(RT.ev.length===2)setPhase('reason');break;
+    case 'pickReason':RT.reason=+d.i;renderPanel();break;
+    case 'lockReason':if(RT.reason===null)return;if(RT.R.next)setPhase('next');else finishRound();break;
+    case 'pickNext':RT.next=+d.i;renderPanel();break;
+    case 'lockNext':if(RT.next!==null)finishRound();break;
+    case 'hint':doHint();break;
+    case 'nextStep':render();break;
+    case 'memTest':memTest(d.m);break;
+    case 'memAns':memAns(+d.i);break;
+    case 'finalPick':finalPick(+d.q,+d.i);break;
+    case 'finalCheck':finalCheck();break;
+    case 'print':window.print();break;
+    case 'copy':{
+      const txt=caseText(),msg=$('#copyMsg');
+      const ok=()=>{msg.textContent='Copied! Paste it where your teacher asked you to turn it in.'};
+      const bad=()=>{msg.textContent='Copy did not work. Please print or take a screenshot instead.'};
+      try{navigator.clipboard.writeText(txt).then(ok,bad)}catch(err){bad()}
+      break}
+    case 'again':$('#modal').hidden=false;break;
+    case 'retry':S.attempt++;S.rp={q:buildQueue(),i:0};RT=null;save();render();break;
+    case 'toReflect':S.masteredOn=S.attempt;S.step=IDX.reflect;save();render();break;
+    case 'rPick':{
+      S.reflect[d.f]=d.v;save();
+      document.querySelectorAll(`[data-act="rPick"][data-f="${d.f}"]`).forEach(x=>{const on=x.dataset.v===d.v;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
+      break}
+    case 'rSubmit':{
+      const m=reflectMissing();
+      if(m.length){$('#rMsg').textContent='Almost done. Please '+m.join(', ')+'.';return}
+      S.step=IDX.case;save();render();break}
+    case 'editReflect':S.step=IDX.reflect;save();render();break;
+  }
+});
+
+$('#stage').addEventListener('input',e=>{
+  const t=e.target;if(t.tagName==='TEXTAREA'&&t.dataset.f){S.reflect[t.dataset.f]=t.value;save()}
+});
+
+/* notes drawer */
+function setTab(t){
+  $('#ntab').innerHTML=NOTES[t];
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+}
+function toggleNotes(open){
+  const n=$('#notes');n.classList.toggle('open',open);
+  $('#notesBtn').setAttribute('aria-expanded',open);
+  if(open)setTab(document.querySelector('.tabs button.on').dataset.tab);
+}
+$('#notesBtn').addEventListener('click',()=>toggleNotes(!$('#notes').classList.contains('open')));
+$('#notesClose').addEventListener('click',()=>toggleNotes(false));
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggleNotes(false);$('#modal').hidden=true}});
+
+/* restart */
+$('#restartBtn').addEventListener('click',()=>{$('#modal').hidden=false});
+$('#noRestart').addEventListener('click',()=>{$('#modal').hidden=true});
+$('#yesRestart').addEventListener('click',()=>{
+  $('#modal').hidden=true;S=fresh();save();RT=null;shownScore=0;render();
+});
+
+/* ============ go ============ */
+buildBg();
+if(S.step>=FLOW.length)S.step=FLOW.length-1;
+render();
+</script>
+</body>
+</html>
